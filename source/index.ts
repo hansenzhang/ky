@@ -107,6 +107,7 @@ export {
 	isTimeoutError,
 	isResponseSizeError,
 	isForceRetryError,
+	isSchemaValidationError,
 } from './utils/type-guards.js';
 export {replaceOption} from './utils/merge.js';
 
