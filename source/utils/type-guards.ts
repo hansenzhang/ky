@@ -4,6 +4,7 @@ import {NetworkError} from '../errors/NetworkError.js';
 import {ResponseSizeError} from '../errors/ResponseSizeError.js';
 import {TimeoutError} from '../errors/TimeoutError.js';
 import {ForceRetryError} from '../errors/ForceRetryError.js';
+import {SchemaValidationError} from '../errors/SchemaValidationError.js';
 
 // Handles cross-realm cases (e.g., iframes, different JS contexts) where `instanceof` fails.
 const isErrorType = (error: unknown, cls: {name: string}): boolean =>
@@ -152,4 +153,39 @@ try {
 */
 export function isResponseSizeError(error: unknown): error is ResponseSizeError {
 	return isErrorType(error, ResponseSizeError);
+}
+
+/**
+Type guard to check if an error is a `SchemaValidationError`.
+
+Unlike the other Ky errors, `SchemaValidationError` is not a `KyError`, so it is not matched by `isKyError()`.
+
+@param error - The error to check
+@returns `true` if the error is a `SchemaValidationError`, `false` otherwise
+
+@example
+```
+import ky, {isSchemaValidationError} from 'ky';
+import {z} from 'zod';
+
+const userSchema = z.object({name: z.string()});
+
+try {
+	const user = await ky('/api/user').json(userSchema);
+	console.log(user.name);
+} catch (error) {
+	if (isSchemaValidationError(error)) {
+		console.error(error.issues);
+	}
+}
+```
+*/
+export function isSchemaValidationError(error: unknown): error is SchemaValidationError {
+	if (error instanceof SchemaValidationError) {
+		return true;
+	}
+
+	// Cross-realm errors (e.g. from a `vm` context or a duplicated copy of Ky) fail `instanceof`, even against `Error`, so check the internal class tag instead.
+	return Object.prototype.toString.call(error) === '[object Error]'
+		&& (error as Error).name === 'SchemaValidationError';
 }

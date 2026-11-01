@@ -1,3 +1,4 @@
+import vm from 'node:vm';
 import {setTimeout as delay} from 'node:timers/promises';
 import test from 'ava';
 import ky, {
@@ -11,6 +12,7 @@ import ky, {
 	isNetworkError,
 	isTimeoutError,
 	isForceRetryError,
+	isSchemaValidationError,
 } from '../source/index.js';
 
 test('error names can be customized without changing instance type guards', async t => {
@@ -108,3 +110,45 @@ test('a branded ForceRetryError from another Ky copy still forces a retry', asyn
 	t.is(text, 'retried');
 });
 
+
+test('isSchemaValidationError recognizes SchemaValidationError', t => {
+	const error = new SchemaValidationError([{message: 'Invalid response'}]);
+
+	t.true(isSchemaValidationError(error));
+	t.false(isKyError(error));
+
+	error.name = 'CustomError';
+	t.true(isSchemaValidationError(error));
+});
+
+test('isSchemaValidationError recognizes errors from another realm', t => {
+	const error = vm.runInNewContext(`
+		class SchemaValidationError extends Error {
+			name = 'SchemaValidationError';
+			issues = [];
+		}
+
+		new SchemaValidationError('Response schema validation failed');
+	`);
+
+	t.false(error instanceof Error);
+	t.false(error instanceof SchemaValidationError);
+	t.true(isSchemaValidationError(error));
+});
+
+test('isSchemaValidationError rejects other values', t => {
+	const httpError = new HTTPError(
+		new Response('Forbidden', {status: 403}),
+		new Request('https://example.com'),
+		{} as any,
+	);
+
+	t.false(isSchemaValidationError(httpError));
+	t.false(isSchemaValidationError(new Error('Nope')));
+	t.false(isSchemaValidationError(new TypeError('Nope')));
+	t.false(isSchemaValidationError(null));
+	t.false(isSchemaValidationError(undefined));
+	t.false(isSchemaValidationError('SchemaValidationError'));
+	t.false(isSchemaValidationError({name: 'SchemaValidationError', issues: []}));
+	t.false(isSchemaValidationError(vm.runInNewContext('({name: "SchemaValidationError"})')));
+});
