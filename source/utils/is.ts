@@ -5,7 +5,7 @@ export const isObject = (value: unknown): value is object => value !== null && t
 export const isNonArrayObject = (value: unknown): value is object => isObject(value) && !Array.isArray(value);
 
 // `NaN` fails the comparison, so it is rejected too.
-export const isNonNegativeNumber = (value: unknown): boolean => typeof value === 'number' && value >= 0;
+export const isNonNegativeNumber = (value: unknown): value is number => typeof value === 'number' && value >= 0;
 
 const objectToString = Object.prototype.toString;
 
