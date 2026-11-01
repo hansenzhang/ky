@@ -12,7 +12,7 @@ const caseInsensitiveMethods = new Set<string>([...requestMethods, 'options', 't
 Normalizes common methods for retry matching while preserving case-sensitive custom methods.
 */
 export const normalizeRetryMethod = (method: string): string =>
-	caseInsensitiveMethods.has(method.toLowerCase()) ? method.toLowerCase() : method;
+	caseInsensitiveMethods.has(method) ? method.toLowerCase() : method;
 
 const retryMethods: HttpMethod[] = ['get', 'put', 'head', 'delete', 'options', 'trace', 'query'];
 
