@@ -2,6 +2,7 @@ import type {KyHeadersInit, Options} from '../types/options.js';
 import type {Hooks, NormalizedHooks} from '../types/hooks.js';
 import {supportsAbortSignal} from '../core/constants.js';
 import {isNonArrayObject, isObject} from './is.js';
+import {getArrayParameterKey, getArraySearchParameters, type SearchParamsArrayFormat} from './search-params.js';
 
 // Registered globally so that a wrapper created by a second copy of Ky, which happens with a duplicated dependency, is still recognised.
 const replaceSymbol: unique symbol = Symbol.for('ky.replaceOption');
@@ -121,9 +122,31 @@ export const cloneShallow = <T>(value: T): T => {
 	return value;
 };
 
-// A tuple array is copied pair by pair, so changing a pair of the copy does not change the caller's `searchParams`.
-export const cloneSearchParameters = <T>(value: T): T =>
-	Array.isArray(value) ? value.map(parameter => cloneShallow(parameter)) as T : cloneShallow(value);
+// A tuple array is copied pair by pair, so changing a pair of the copy does not change the caller's `searchParams`. In a plain object, array values are copied too, also inside a `replaceOption()` wrapper, so pushing onto one does not change the caller's array.
+export const cloneSearchParameters = <T>(value: T): T => {
+	if (Array.isArray(value)) {
+		return value.map(parameter => cloneShallow(parameter)) as T;
+	}
+
+	const copy = cloneShallow(value);
+	if (isPlainObject(copy)) {
+		for (const [key, item] of Object.entries(copy)) {
+			const {isReplace, value: entry} = getReplaceState(item);
+			if (Array.isArray(entry)) {
+				const entryCopy = [...entry];
+				// Defined instead of assigned, so a `__proto__` key stays an own property.
+				Object.defineProperty(copy, key, {
+					value: isReplace ? replaceOption(entryCopy) : entryCopy,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
+			}
+		}
+	}
+
+	return copy;
+};
 
 // Recursively clone plain objects and arrays so that `init`-hook mutations to nested `json` or `context` values do not leak into the next request. Non-plain values (functions, class instances, `Date`, `URLSearchParams`, …) are kept by reference, matching how option merging treats them as whole values. The `seen` map keeps shared and cyclic references intact.
 export const cloneDeep = <T>(value: T, seen: WeakMap<Record<string, unknown> | unknown[], unknown> = new WeakMap()): T => {
@@ -270,7 +293,7 @@ const resolveReplaceMarkers = (value: unknown, resolved: Map<unknown, unknown>):
 	return result;
 };
 
-const appendSearchParameters = (target: any, source: any): URLSearchParams => {
+const appendSearchParameters = (target: any, source: any, arrayFormat: SearchParamsArrayFormat | undefined): URLSearchParams => {
 	const result: MarkedSearchParameters = new URLSearchParams();
 	// Deleted keys stay marked even when a later layer re-adds the key, so the key is still removed from the input URL before the re-added value is appended.
 	const deleted = new Set<string>();
@@ -309,15 +332,26 @@ const appendSearchParameters = (target: any, source: any): URLSearchParams => {
 			for (const [key, value] of Object.entries(input)) {
 				// A `replaceOption()` wrapper is unwrapped here, because this branch stringifies every value, so a wrapper that reached it would land in the URL as `[object Object]`. A wrapped value replaces the inherited values of its key instead of being added to them.
 				const {isReplace, value: entry} = getReplaceState(value);
+				// Inherited array items can be stored under another name (`key[]`), so that name is removed along with the key.
+				const arrayKey = getArrayParameterKey(key, arrayFormat);
 				if (entry === undefined) {
-					result.delete(key);
-					deleted.add(key);
+					for (const name of new Set([key, arrayKey])) {
+						result.delete(name);
+						deleted.add(name);
+					}
 				} else {
 					if (isReplace) {
 						result.delete(key);
+						result.delete(arrayKey);
 					}
 
-					result.append(key, String(entry));
+					if (Array.isArray(entry)) {
+						for (const [name, arrayValue] of getArraySearchParameters(key, entry, arrayFormat)) {
+							result.append(name, arrayValue);
+						}
+					} else {
+						result.append(key, String(entry));
+					}
 				}
 			}
 		} else {
@@ -343,6 +377,16 @@ const deepMergeInternal = <T>(isRoot: boolean, ...sources: Array<Partial<T> | un
 	let hooks = {};
 	let searchParameters: any;
 	const signals: AbortSignal[] = [];
+
+	// The format of the final merged options applies to every layer, so a layer that sets it later still formats the arrays of earlier layers. The last source with the key wins, and `undefined` selects the default.
+	let arrayFormat: SearchParamsArrayFormat | undefined;
+	if (isRoot) {
+		for (const source of sources) {
+			if (isNonArrayObject(source) && Object.hasOwn(source, 'searchParamsArrayFormat')) {
+				arrayFormat = getReplaceState((source as {searchParamsArrayFormat?: unknown}).searchParamsArrayFormat).value as SearchParamsArrayFormat | undefined;
+			}
+		}
+	}
 
 	for (const source of sources) {
 		if (Array.isArray(source)) {
@@ -410,7 +454,7 @@ const deepMergeInternal = <T>(isRoot: boolean, ...sources: Array<Partial<T> | un
 						searchParameters = cloneSearchParameters(value);
 					} else {
 						// Subsequent sources: merge and convert to URLSearchParams
-						searchParameters = appendSearchParameters(searchParameters, value);
+						searchParameters = appendSearchParameters(searchParameters, value, arrayFormat);
 					}
 
 					continue;
