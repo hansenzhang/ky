@@ -777,21 +777,6 @@ const response = await ky('https://example.com', {
 });
 ```
 
-##### throwHttpErrors
-
-Type: `boolean | (status: number) => boolean`\
-Default: `true`
-
-Throw an `HTTPError` when, after following redirects, the response has a non-2xx status code. To also throw for redirects instead of following them, set the [`redirect`](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#Parameters) option to `'manual'`.
-
-Setting this to `false` may be useful if you are checking for resource availability and are expecting error responses.
-
-You can also pass a function that accepts the HTTP status code and returns a boolean for selective error handling. Note that this can violate the principle of least surprise, so it's recommended to use the boolean form unless you have a specific use case like treating 404 responses differently.
-
-Note: If `false`, error responses are considered successful and the request will not be retried.
-
-Note: [Opaque responses](https://developer.mozilla.org/en-US/docs/Web/API/Response/type) from `no-cors` requests are returned as-is (without throwing `HTTPError`), since the actual status is hidden by the browser.
-
 ##### onDownloadProgress
 
 Type: `Function`
