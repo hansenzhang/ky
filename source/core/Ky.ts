@@ -34,6 +34,7 @@ import {normalizeRequestMethod, normalizeRetryMethod, normalizeRetryOptions} fro
 import timeout from '../utils/timeout.js';
 import delay from '../utils/delay.js';
 import {findUnknownOptions, hasSearchParameters} from '../utils/options.js';
+import {getArrayParameterKey, getArraySearchParameters, searchParamsArrayFormats, type SearchParamsArrayFormat} from '../utils/search-params.js';
 import isRawNetworkError from '../utils/is-network-error.js';
 import {
 	isError, isNonArrayObject, isNonNegativeNumber, isObject, isRequest, isResponse,
@@ -277,7 +278,7 @@ const deleteSearchParameter = (url: URL, key: string): void => {
 };
 
 // Adds the `searchParams` option to the search parameters already in `url`.
-const applySearchParameters = (url: URL, searchParameters: SearchParamsOption): void => {
+const applySearchParameters = (url: URL, searchParameters: SearchParamsOption, arrayFormat: SearchParamsArrayFormat | undefined): void => {
 	const deleted = (searchParameters as MarkedSearchParameters | undefined)?.[deletedParametersSymbol];
 
 	if (deleted) {
@@ -297,6 +298,11 @@ const applySearchParameters = (url: URL, searchParameters: SearchParamsOption): 
 		for (const [key, value] of Object.entries(searchParameters)) {
 			if (value === undefined) {
 				deleteSearchParameter(url, key);
+				deleteSearchParameter(url, getArrayParameterKey(key, arrayFormat));
+			} else if (Array.isArray(value)) {
+				for (const [arrayKey, arrayValue] of getArraySearchParameters(key, value, arrayFormat)) {
+					url.searchParams.append(arrayKey, arrayValue);
+				}
 			} else {
 				url.searchParams.append(key, value as string);
 			}
@@ -481,6 +487,11 @@ export class Ky {
 			throw new TypeError('The `context` option must be an object');
 		}
 
+		// `null` and any other unknown value are rejected too, since only `undefined` selects the default.
+		if (options.searchParamsArrayFormat !== undefined && !searchParamsArrayFormats.includes(options.searchParamsArrayFormat)) {
+			throw new TypeError('The `searchParamsArrayFormat` option must be `\'repeat\'`, `\'comma\'`, or `\'brackets\'`');
+		}
+
 		this.#options = {
 			...options,
 			headers: mergeHeaders((input as Request).headers, options.headers),
@@ -547,7 +558,7 @@ export class Ky {
 		const {searchParams} = this.#options;
 		if (hasSearchParameters(searchParams)) {
 			const url = new URL(this.request.url);
-			applySearchParameters(url, searchParams);
+			applySearchParameters(url, searchParams, this.#options.searchParamsArrayFormat);
 
 			// Recreate request with the updated URL. We already have all options in this.#options, including duplex.
 			// Rebuilding is also what drops an inherited `Request` body, so it is skipped when the search parameters leave the URL unchanged.
@@ -1313,6 +1324,7 @@ export class Ky {
 				parseJson,
 				stringifyJson,
 				searchParams,
+				searchParamsArrayFormat,
 				timeout,
 				totalTimeout,
 				maxResponseSize,
