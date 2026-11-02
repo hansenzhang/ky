@@ -502,8 +502,8 @@ export class Ky {
 		validateTimeoutOption(totalTimeout, 'totalTimeout');
 		this.#retryLimit = this.#options.retry.limit;
 
-		if (maxResponseSize !== Number.POSITIVE_INFINITY && (!Number.isSafeInteger(maxResponseSize) || maxResponseSize < 0)) {
-			throw new TypeError('The `maxResponseSize` option must be a non-negative safe integer or Infinity');
+		if (maxResponseSize !== Number.POSITIVE_INFINITY && (!Number.isSafeInteger(maxResponseSize) || maxResponseSize <= 0)) {
+			throw new TypeError('The `maxResponseSize` option must be a positive safe integer or Infinity');
 		}
 
 		this.#requestInput = input instanceof globalThis.Request ? input : undefined;
