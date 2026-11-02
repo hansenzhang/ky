@@ -293,10 +293,10 @@ const applySearchParameters = (url: URL, searchParameters: SearchParamsOption): 
 			url.search = url.search ? `${url.search}&${stringSearchParameters}` : `?${stringSearchParameters}`;
 		}
 	} else if (isNonArrayObject(searchParameters) && !(searchParameters instanceof URLSearchParams)) {
-		// Filter out undefined values from plain objects. An `undefined` value removes the key from the input URL instead.
+		// Filter out undefined values from plain objects.
 		for (const [key, value] of Object.entries(searchParameters)) {
 			if (value === undefined) {
-				deleteSearchParameter(url, key);
+				continue;
 			} else {
 				url.searchParams.append(key, value as string);
 			}
