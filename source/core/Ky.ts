@@ -208,9 +208,8 @@ const validateTimeoutOption = (value: unknown, name: 'timeout' | 'totalTimeout')
 		throw new TypeError(`The \`${name}\` option must be a non-negative number or \`false\``);
 	}
 
-	// `Infinity` lands here too, since it is not a usable delay either.
-	if (value > maxSafeTimeout) {
-		throw new RangeError(`The \`${name}\` option cannot be greater than ${maxSafeTimeout}`);
+	if (value > maxSafeTimeout && value !== Number.POSITIVE_INFINITY) {
+		throw new TypeError(`The \`${name}\` option cannot be greater than ${maxSafeTimeout}`);
 	}
 };
 
