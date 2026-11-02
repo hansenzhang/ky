@@ -14,9 +14,9 @@ Normalizes common methods for retry matching while preserving case-sensitive cus
 export const normalizeRetryMethod = (method: string): string =>
 	caseInsensitiveMethods.has(method.toLowerCase()) ? method.toLowerCase() : method;
 
-const retryMethods: HttpMethod[] = ['get', 'put', 'head', 'delete', 'options', 'trace', 'query'];
+const retryMethods: HttpMethod[] = ['get', 'put', 'head', 'delete', 'options', 'query'];
 
-const retryStatusCodes = [408, 413, 429, 500, 502, 503, 504];
+const retryStatusCodes = [408, 413, 429, 500, 502, 503];
 
 const retryAfterStatusCodes = [413, 429, 503];
 
