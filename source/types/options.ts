@@ -9,7 +9,7 @@ export type SearchParamsInit = string | string[][] | Record<string, string> | UR
 // eslint-disable-next-line unicorn/prevent-abbreviations
 export type SearchParamsOption =
 	| Exclude<SearchParamsInit, string[][]>
-	| Record<string, string | number | boolean | undefined>
+	| Record<string, string | number | boolean | undefined | Array<string | number | boolean> | ReadonlyArray<string | number | boolean>>
 	| Array<Array<string | number | boolean>>
 	| ReadonlyArray<ReadonlyArray<string | number | boolean>>;
 
@@ -122,9 +122,37 @@ export type KyOptions = {
 
 	When passing an object, setting a value to `undefined` deletes the parameter, including from the input URL, even when a later option layer adds the parameter again. `null` values are preserved and converted to the string `'null'`.
 
+	When passing an object, a value can also be an array of strings, numbers, or booleans. How an array is added to the URL is controlled by the [`searchParamsArrayFormat`](#searchparamsarrayformat) option.
+
 	When `input` is a [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) with a body, the body is sent as a stream, which requires [request stream support](https://caniuse.com/wf-fetch-request-streams) and, in Chromium-based browsers, an HTTP/2 or HTTP/3 connection (streaming uploads over HTTP/1.1 fail with a network error, even over plain HTTP). The inherited body is dropped when the search parameters change the URL and the request has to be rebuilt in an environment that cannot reuse it, which is the case without request stream support, when `keepalive` is true, or when the effective mode is `'no-cors'`. A search parameter value that leaves the URL unchanged does not rebuild the request, so the body is kept. A compatible body passed explicitly with the `body` option is still used.
 	*/
 	searchParams?: SearchParamsOption;
+
+	/**
+	How array values in the object form of the [`searchParams`](#searchparams) option are added to the URL.
+
+	- `'repeat'` adds one parameter per item: `{tag: ['a', 'b']}` gives `tag=a&tag=b`.
+	- `'comma'` adds one parameter with the items joined by a comma: `{tag: ['a', 'b']}` gives `tag=a%2Cb`.
+	- `'brackets'` adds one parameter per item with `[]` appended to the key: `{tag: ['a', 'b']}` gives `tag[]=a&tag[]=b`. The key is encoded the way `URLSearchParams` encodes it, so the URL contains `tag%5B%5D=a&tag%5B%5D=b`.
+
+	Numbers and booleans are converted with `String()`. An empty array adds nothing, and parameters already in the input URL stay.
+
+	This only affects array values in the object form. Strings, `URLSearchParams`, and the array-of-pairs form are unchanged. Any other value than the ones above makes the request reject with a `TypeError`.
+
+	@default 'repeat'
+
+	@example
+	```
+	import ky from 'ky';
+
+	await ky('https://example.com', {
+		searchParams: {tag: ['a', 'b']},
+		searchParamsArrayFormat: 'comma',
+	});
+	// https://example.com/?tag=a%2Cb
+	```
+	*/
+	searchParamsArrayFormat?: 'repeat' | 'comma' | 'brackets' | undefined;
 
 	/**
 	A base URL to [resolve](https://developer.mozilla.org/en-US/docs/Web/API/URL_API/Resolving_relative_references) the `input` against. When the `input` (after applying the `prefix` option) is only a relative URL, such as `'users'`, `'/users'`, or `'//my-site.com'`, it will be resolved against the `baseUrl` to determine the destination of the request. Otherwise, the `input` is absolute, such as `'https://my-site.com'`, and it will bypass the `baseUrl`.
