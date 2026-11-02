@@ -250,7 +250,7 @@ const resolveInput = (input: Input, prefix: string, baseUrl: Options['baseUrl'])
 
 	if (prefix) {
 		const normalizedPrefix = prefix.replace(/\/+$/, '');
-		const normalizedInput = input.replace(/^\/+/, '');
+		const normalizedInput = input;
 		input = `${normalizedPrefix}/${normalizedInput}`;
 	}
 
