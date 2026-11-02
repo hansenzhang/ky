@@ -490,7 +490,7 @@ export class Ky {
 			referrerPolicy: options.referrerPolicy ?? (input as Request).referrerPolicy,
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			prefix: String(options.prefix || ''),
-			retry: normalizeRetryOptions(options.retry),
+			retry: normalizeRetryOptions(options.retry ?? undefined),
 			...withAttemptDefaults(options),
 			totalTimeout,
 			maxResponseSize,

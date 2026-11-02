@@ -416,8 +416,8 @@ const deepMergeInternal = <T>(isRoot: boolean, ...sources: Array<Partial<T> | un
 					continue;
 				}
 
-				// Checked here as well as when the request is built, because a later layer would otherwise replace an invalid value, `null` included, before anything reports it.
-				if (isRoot && key === 'retry' && value !== undefined && typeof value !== 'number' && !isNonArrayObject(value)) {
+				// Checked here as well as when the request is built, because a later layer would otherwise replace an invalid value before anything reports it.
+				if (isRoot && key === 'retry' && value !== undefined && value !== null && typeof value !== 'number' && !isNonArrayObject(value)) {
 					throw new TypeError('`retry` must be a number or an object');
 				}
 
