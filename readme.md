@@ -1392,22 +1392,6 @@ try {
 }
 ```
 
-### ResponseSizeError
-
-Error thrown when the response body exceeds `maxResponseSize`. It has a `request` property with the `Request` object and a `maxResponseSize` property with the configured limit in bytes.
-
-```js
-import ky, {isResponseSizeError} from 'ky';
-
-try {
-	await ky('https://example.com/data', {maxResponseSize: 1024}).json();
-} catch (error) {
-	if (isResponseSizeError(error)) {
-		console.log(`Response exceeded ${error.maxResponseSize} bytes`);
-	}
-}
-```
-
 ### NetworkError
 
 The error thrown when a network error occurs during the request (e.g., DNS failure, connection refused, offline). It has a `request` property with the [`Request` object](https://developer.mozilla.org/en-US/docs/Web/API/Request). The original error is available via the standard `cause` property.
