@@ -1,0 +1,16 @@
+name: pc-ci
+on:
+  - push
+  - pull_request
+jobs:
+  check:
+    name: Types and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npx tsc -p . --noEmit
+      - run: npx ava --concurrency=1 test/merge.ts test/normalize.ts test/validation.ts
